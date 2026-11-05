@@ -1,0 +1,17 @@
+# PHP / local environment
+vendor/
+composer.lock
+.env
+.env.*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Uploaded app data
+uploads/

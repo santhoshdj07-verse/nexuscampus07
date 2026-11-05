@@ -1,0 +1,443 @@
+<?php
+
+session_start();
+
+require_once "config/database.php";
+
+
+/* =========================================================
+   SMART CAMPUS
+   COMPLETE ADMISSION SYSTEM DATABASE SETUP
+   ========================================================= */
+
+
+/* =========================================================
+   1. STUDENT LOGIN TABLE
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EaXISTS student_accounts
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    student_id INT NOT NULL UNIQUE,
+
+    username VARCHAR(50) NOT NULL UNIQUE,
+
+    password VARCHAR(255) NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (student_id)
+    REFERENCES students(id)
+    ON DELETE CASCADE
+)
+");
+
+
+/* =========================================================
+   2. APPLICATIONS
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EXISTS student_applications
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    application_no VARCHAR(30) NOT NULL UNIQUE,
+
+    student_id INT NOT NULL,
+
+    course_type ENUM('UG','PG') NOT NULL,
+
+    course_name VARCHAR(100) NOT NULL,
+
+    date_of_birth DATE NULL,
+
+    gender VARCHAR(20),
+
+    email VARCHAR(100),
+
+    address TEXT,
+
+    tenth_school VARCHAR(150),
+
+    tenth_year VARCHAR(10),
+
+    tenth_percentage DECIMAL(5,2),
+
+    eleventh_school VARCHAR(150),
+
+    eleventh_year VARCHAR(10),
+
+    eleventh_percentage DECIMAL(5,2),
+
+    twelfth_school VARCHAR(150),
+
+    twelfth_year VARCHAR(10),
+
+    twelfth_percentage DECIMAL(5,2),
+
+    ug_college VARCHAR(150),
+
+    ug_course VARCHAR(100),
+
+    ug_university VARCHAR(150),
+
+    ug_year VARCHAR(10),
+
+    ug_percentage DECIMAL(5,2),
+
+    application_status
+        ENUM(
+            'DRAFT',
+            'SUBMITTED',
+            'ACCEPTED',
+            'REJECTED'
+        )
+        DEFAULT 'DRAFT',
+
+    rejection_reason TEXT,
+
+    submitted_at DATETIME NULL,
+
+    reviewed_at DATETIME NULL,
+
+    reviewed_by INT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (student_id)
+        REFERENCES students(id)
+        ON DELETE CASCADE
+)
+");
+
+
+/* =========================================================
+   3. DOCUMENTS
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EXISTS application_documents
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    application_id INT NOT NULL,
+
+    document_type VARCHAR(100) NOT NULL,
+
+    file_name VARCHAR(255) NOT NULL,
+
+    file_path VARCHAR(500) NOT NULL,
+
+    file_size INT DEFAULT 0,
+
+    mime_type VARCHAR(100),
+
+    document_status
+        ENUM(
+            'UPLOADED',
+            'VERIFIED',
+            'REJECTED'
+        )
+        DEFAULT 'UPLOADED',
+
+    verification_note TEXT,
+
+    verified_by INT NULL,
+
+    verified_at DATETIME NULL,
+
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (application_id)
+        REFERENCES student_applications(id)
+        ON DELETE CASCADE
+)
+");
+
+
+/* =========================================================
+   4. ADMISSION
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EXISTS admission_applications
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    admission_no VARCHAR(40) UNIQUE,
+
+    application_id INT NOT NULL UNIQUE,
+
+    student_id INT NOT NULL,
+
+    admission_status
+        ENUM(
+            'DOCUMENT_VERIFICATION',
+            'VERIFICATION_DONE',
+            'PROCESSING',
+            'APPROVED',
+            'REJECTED'
+        )
+        DEFAULT 'DOCUMENT_VERIFICATION',
+
+    admission_remarks TEXT,
+
+    approved_by INT NULL,
+
+    approved_at DATETIME NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (application_id)
+        REFERENCES student_applications(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (student_id)
+        REFERENCES students(id)
+        ON DELETE CASCADE
+)
+");
+
+
+/* =========================================================
+   5. STATUS HISTORY
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EXISTS admission_status_history
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    student_id INT NOT NULL,
+
+    application_id INT NULL,
+
+    status VARCHAR(100) NOT NULL,
+
+    remarks TEXT,
+
+    changed_by INT NULL,
+
+    changed_by_type VARCHAR(20),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (student_id)
+        REFERENCES students(id)
+        ON DELETE CASCADE
+)
+");
+
+
+/* =========================================================
+   6. NOTIFICATIONS
+   ========================================================= */
+
+$conn->query("
+CREATE TABLE IF NOT EXISTS notifications
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+
+    user_type ENUM('STUDENT','ADMIN') NOT NULL,
+
+    title VARCHAR(200) NOT NULL,
+
+    message TEXT NOT NULL,
+
+    notification_type VARCHAR(50),
+
+    is_read TINYINT(1) DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+");
+
+
+/* =========================================================
+   7. CREATE UPLOAD DIRECTORY
+   ========================================================= */
+
+$uploadDirectory =
+    __DIR__ .
+    DIRECTORY_SEPARATOR .
+    "uploads" .
+    DIRECTORY_SEPARATOR .
+    "documents";
+
+
+if (!is_dir($uploadDirectory))
+{
+    mkdir(
+        $uploadDirectory,
+        0777,
+        true
+    );
+}
+
+
+?>
+
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>
+Admission System Setup
+</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(59,130,246,.15),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(139,92,246,.15),
+            transparent 30%
+        ),
+        #070b17;
+
+    color:#f8fafc;
+
+    font-family:
+        Segoe UI,
+        Arial,
+        sans-serif;
+}
+
+.box{
+    width:600px;
+    max-width:92%;
+
+    padding:35px;
+
+    border-radius:20px;
+
+    background:
+        rgba(13,19,36,.95);
+
+    border:
+        1px solid
+        rgba(148,163,184,.15);
+
+    box-shadow:
+        0 30px 80px
+        rgba(0,0,0,.45);
+}
+
+h1{
+    margin-top:0;
+}
+
+.success{
+    color:#86efac;
+
+    padding:15px;
+
+    border-radius:12px;
+
+    background:
+        rgba(34,197,94,.08);
+
+    border:
+        1px solid
+        rgba(34,197,94,.2);
+}
+
+.list{
+    margin-top:20px;
+    line-height:2;
+    color:#cbd5e1;
+}
+
+.warning{
+    margin-top:20px;
+    color:#fbbf24;
+    font-size:12px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>
+Smart Campus Admission System
+</h1>
+
+<div class="success">
+
+✓ Database setup completed successfully.
+
+</div>
+
+<div class="list">
+
+✓ Student Accounts<br>
+
+✓ Student Applications<br>
+
+✓ Application Documents<br>
+
+✓ Document Verification<br>
+
+✓ Admission Processing<br>
+
+✓ Admission Status History<br>
+
+✓ Notifications<br>
+
+✓ Document Upload Directory
+
+</div>
+
+<div class="warning">
+
+For security, remove or rename
+admission_setup.php after successful setup.
+
+</div>
+
+</div>
+
+</body>
+
+</html>
+
+<?php
+
+$conn->close();
+
+?>
